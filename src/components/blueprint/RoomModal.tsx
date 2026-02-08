@@ -5,16 +5,18 @@ import type { Room } from "@/types/blueprint";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Pencil, Trash2 } from "lucide-react";
 
 type Props = {
   room: Room | null;
   open: boolean;
   onClose: () => void;
   onSave: (room: { id: string; name: string; points: Room["points"] }) => void;
+  onDelete?: () => void;
   position: { x: number; y: number };
 };
 
-export function RoomModal({ room, open, onClose, onSave, position }: Props) {
+export function RoomModal({ room, open, onClose, onSave, onDelete, position }: Props) {
   const [name, setName] = useState("");
 
   useEffect(() => {
@@ -62,13 +64,33 @@ export function RoomModal({ room, open, onClose, onSave, position }: Props) {
             autoFocus
           />
         </div>
-        <div className="flex gap-2 justify-end">
-          <Button type="button" variant="outline" size="sm" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button type="submit" size="sm" disabled={!name.trim()}>
-            Save room
-          </Button>
+        <div className="flex flex-wrap gap-2 justify-between items-center">
+          <div className="flex gap-2">
+            {onDelete && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                onClick={async () => {
+                  await onDelete();
+                  onClose();
+                }}
+              >
+                <Trash2 className="size-3.5 mr-1" />
+                Delete
+              </Button>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <Button type="button" variant="outline" size="sm" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button type="submit" size="sm" disabled={!name.trim()}>
+              <Pencil className="size-3.5 mr-1" />
+              Save room
+            </Button>
+          </div>
         </div>
       </form>
     </div>

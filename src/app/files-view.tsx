@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import type { ProjectFile } from "@/types/database";
+import { useFilePreview } from "@/components/file-preview";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -26,6 +27,7 @@ function safeStoragePath(projectId: string, fileName: string): string {
 export function FilesView({ projectId, projectName }: { projectId: string; projectName: string }) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { openPreview } = useFilePreview();
   const [files, setFiles] = useState<ProjectFile[]>([]);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -104,13 +106,6 @@ export function FilesView({ projectId, projectName }: { projectId: string; proje
     setFiles((prev) => prev.filter((f) => f.id !== file.id));
   }
 
-  async function getDownloadUrl(file: ProjectFile): Promise<string> {
-    const { data } = await supabase.storage
-      .from(BUCKET)
-      .createSignedUrl(file.file_path, 60);
-    return data?.signedUrl ?? "#";
-  }
-
   return (
     <div className="space-y-6">
       <Card>
@@ -163,18 +158,14 @@ export function FilesView({ projectId, projectName }: { projectId: string; proje
                 {files.map((file) => (
                   <TableRow key={file.id}>
                     <TableCell className="font-medium">
-                      <a
-                        href="#"
+                      <button
+                        type="button"
                         className="flex items-center gap-2 text-primary hover:underline"
-                        onClick={async (e) => {
-                          e.preventDefault();
-                          const url = await getDownloadUrl(file);
-                          window.open(url, "_blank");
-                        }}
+                        onClick={() => openPreview(projectId, file)}
                       >
                         <FileText className="h-4 w-4" />
                         {file.name}
-                      </a>
+                      </button>
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {file.file_size != null

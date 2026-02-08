@@ -289,6 +289,7 @@ export function BlueprintWorkspace({
   const handleLinkTask = useCallback(
     async (pinId: string, taskId: string) => {
       setSaveError(null);
+      const pin = pins.find((p) => p.id === pinId);
       const { error } = await supabase
         .from("project_blueprint_pins")
         .update({ task_id: taskId })
@@ -297,6 +298,13 @@ export function BlueprintWorkspace({
       if (error) {
         setSaveError(error.message);
         return;
+      }
+      // Auto-assign task location to room name when pin is inside a room
+      if (pin?.roomId) {
+        const room = rooms.find((r) => r.id === pin.roomId);
+        if (room?.name) {
+          await supabase.from("tasks").update({ location: room.name }).eq("id", taskId);
+        }
       }
       const next = pins.map((p) => (p.id === pinId ? { ...p, taskId } : p));
       setPins(next);
@@ -342,6 +350,13 @@ export function BlueprintWorkspace({
       if (error) {
         setSaveError(error.message);
         return;
+      }
+      // Auto-assign task location to room name when pin is inside a room
+      if (roomId) {
+        const room = rooms.find((r) => r.id === roomId);
+        if (room?.name) {
+          await supabase.from("tasks").update({ location: room.name }).eq("id", taskId);
+        }
       }
       const next = [...pins, newPin];
       setPins(next);
@@ -439,6 +454,27 @@ export function BlueprintWorkspace({
       setTaskModal((m) => ({ ...m, open: false }));
     }
   }, [selectedRoomId, selectedPinId, rooms, pins, pushHistory, projectId]);
+
+  const handleDeletePin = useCallback(
+    async (pinId: string) => {
+      setSaveError(null);
+      const { error } = await supabase
+        .from("project_blueprint_pins")
+        .delete()
+        .eq("id", pinId)
+        .eq("project_id", projectId);
+      if (error) {
+        setSaveError(error.message);
+        return;
+      }
+      const nextPins = pins.filter((p) => p.id !== pinId);
+      setPins(nextPins);
+      pushHistory({ rooms, pins: nextPins });
+      setSelectedPinId(null);
+      setTaskModal((m) => ({ ...m, open: false }));
+    },
+    [pins, pushHistory, projectId]
+  );
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -599,6 +635,7 @@ export function BlueprintWorkspace({
         position={roomModal.position}
         onClose={() => setRoomModal((m) => ({ ...m, open: false }))}
         onSave={handleSaveRoom}
+        onDelete={roomModal.open ? handleDelete : undefined}
       />
       <TaskModal
         projectId={projectId}
@@ -608,6 +645,7 @@ export function BlueprintWorkspace({
         position={taskModal.position}
         onClose={() => setTaskModal((m) => ({ ...m, open: false }))}
         onLinkTask={handleLinkTask}
+        onDeletePin={handleDeletePin}
       />
       {placePinModal && (
         <PlacePinModal

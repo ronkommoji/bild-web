@@ -142,6 +142,9 @@ export type Database = {
           id: string;
           name: string;
           status: string | null;
+          join_code: string;
+          gemini_file_search_store_name: string | null;
+          gemini_file_search_synced_at: string | null;
         };
         Insert: {
           address?: string | null;
@@ -152,6 +155,9 @@ export type Database = {
           id?: string;
           name: string;
           status?: string | null;
+          join_code?: string;
+          gemini_file_search_store_name?: string | null;
+          gemini_file_search_synced_at?: string | null;
         };
         Update: {
           address?: string | null;
@@ -162,6 +168,9 @@ export type Database = {
           id?: string;
           name?: string;
           status?: string | null;
+          join_code?: string;
+          gemini_file_search_store_name?: string | null;
+          gemini_file_search_synced_at?: string | null;
         };
       };
       task_proofs: {

@@ -12,6 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Pencil, Trash2 } from "lucide-react";
 
 type Props = {
   projectId: string;
@@ -21,6 +22,7 @@ type Props = {
   position: { x: number; y: number };
   onClose: () => void;
   onLinkTask: (pinId: string, taskId: string) => void;
+  onDeletePin?: (pinId: string) => void;
   onOpenTask?: (taskId: string) => void;
 };
 
@@ -39,6 +41,7 @@ export function TaskModal({
   position,
   onClose,
   onLinkTask,
+  onDeletePin,
   onOpenTask,
 }: Props) {
   const [selectedTaskId, setSelectedTaskId] = useState<string>("");
@@ -106,15 +109,31 @@ export function TaskModal({
           </SelectContent>
         </Select>
       </div>
-      <div className="flex gap-2 pt-2">
+      <div className="flex flex-wrap gap-2 pt-2">
         <Button type="button" size="sm" variant="outline" asChild>
           <Link href={`/project/${projectId}/task/new`}>New task</Link>
         </Button>
         {linkedTask && (
           <Button type="button" size="sm" asChild>
             <Link href={`/project/${projectId}/task/${linkedTask.id}`} onClick={onClose}>
-              Open task
+              <Pencil className="size-3.5 mr-1" />
+              Edit task
             </Link>
+          </Button>
+        )}
+        {onDeletePin && pin && (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+            onClick={async () => {
+              await onDeletePin(pin.id);
+              onClose();
+            }}
+          >
+            <Trash2 className="size-3.5 mr-1" />
+            Delete pin
           </Button>
         )}
       </div>

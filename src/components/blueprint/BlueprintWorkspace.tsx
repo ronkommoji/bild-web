@@ -23,6 +23,9 @@ import {
   Home,
   Upload,
   Loader2,
+  ChevronRight,
+  ZoomIn,
+  ZoomOut,
 } from "lucide-react";
 
 const BUCKET = "project-files";
@@ -84,10 +87,19 @@ export function BlueprintWorkspace({
   const [createTaskModalOpen, setCreateTaskModalOpen] = useState(false);
   const [createTaskModalPosition, setCreateTaskModalPosition] = useState({ clientX: 0, clientY: 0 });
   const [extraTasks, setExtraTasks] = useState<Task[]>([]);
+  const [taskUpdates, setTaskUpdates] = useState<Record<string, Task>>({});
   const [lastCreatedTaskId, setLastCreatedTaskId] = useState<string | null>(null);
   const [imageSize, setImageSize] = useState<{ width: number; height: number } | null>(null);
+  const [overviewRoomId, setOverviewRoomId] = useState<string | null>(null);
 
-  const tasksWithExtra = [...tasks, ...extraTasks];
+  const tasksWithExtra = [...tasks, ...extraTasks].map((t) => taskUpdates[t.id] ?? t);
+
+  // Tasks shown in overview: when a room is selected, tasks with pins in that room; otherwise all tasks with pins
+  const taskIdsWithPins = Array.from(new Set(pins.map((p) => p.taskId)));
+  const overviewTaskIds = overviewRoomId
+    ? pins.filter((p) => p.roomId === overviewRoomId).map((p) => p.taskId)
+    : taskIdsWithPins;
+  const overviewTasks = tasksWithExtra.filter((t) => overviewTaskIds.includes(t.id));
 
   const pushHistory = useCallback((snapshot: BlueprintSnapshot) => {
     setHistory((prev) => {
@@ -321,12 +333,6 @@ export function BlueprintWorkspace({
     setCreateTaskModalOpen(true);
   }, [placePinModal]);
 
-  const handleTaskCreated = useCallback((newTask: Task) => {
-    setExtraTasks((prev) => [...prev, newTask]);
-    setLastCreatedTaskId(newTask.id);
-    setCreateTaskModalOpen(false);
-  }, []);
-
   const handlePlacePin = useCallback(
     async (taskId: string) => {
       if (!placePinModal) return;
@@ -364,6 +370,19 @@ export function BlueprintWorkspace({
       setPlacePinModal(null);
     },
     [placePinModal, rooms, pins, pushHistory, projectId]
+  );
+
+  const handleTaskCreated = useCallback(
+    (newTask: Task) => {
+      setExtraTasks((prev) => [...prev, newTask]);
+      setCreateTaskModalOpen(false);
+      if (placePinModal) {
+        handlePlacePin(newTask.id);
+      } else {
+        setLastCreatedTaskId(newTask.id);
+      }
+    },
+    [placePinModal, handlePlacePin]
   );
 
   const handleFinishRoom = useCallback(() => {
@@ -489,6 +508,30 @@ export function BlueprintWorkspace({
   const canUndo = historyIndex > 0;
   const canRedo = historyIndex < history.length - 1 && history.length > 0;
 
+  const zoomFactor = 1.2;
+  const minK = 0.2;
+  const maxK = 5;
+
+  const handleZoom = useCallback(
+    (inOrOut: "in" | "out") => {
+      const el = canvasContainerRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      const factor = inOrOut === "in" ? zoomFactor : 1 / zoomFactor;
+      const newK = Math.min(maxK, Math.max(minK, transform.k * factor));
+      const dx = (cx - rect.left - transform.x) / transform.k;
+      const dy = (cy - rect.top - transform.y) / transform.k;
+      const newX = cx - rect.left - dx * newK;
+      const newY = cy - rect.top - dy * newK;
+      setTransform({ x: newX, y: newY, k: newK });
+    },
+    [transform]
+  );
+
+  const zoomPercent = Math.round(transform.k * 100);
+
   return (
     <div className="flex flex-col h-full bg-[#FFFDF1]">
       <header className="flex items-center justify-between gap-4 border-b border-[#E8DCC8] bg-white px-4 py-2 shrink-0">
@@ -531,52 +574,6 @@ export function BlueprintWorkspace({
               {uploadError ?? saveError}
             </span>
           )}
-          <div className="flex rounded-md border border-[#E8DCC8] p-0.5">
-            <Button
-              variant={mode === "view" ? "secondary" : "ghost"}
-              size="xs"
-              onClick={() => setMode("view")}
-            >
-              <MousePointer2 className="size-3.5 mr-1" />
-              View
-            </Button>
-            <Button
-              variant={mode === "draw_room" ? "secondary" : "ghost"}
-              size="xs"
-              onClick={() => {
-                setMode("draw_room");
-                setDrawingRoomPoints([]);
-              }}
-            >
-              <Square className="size-3.5 mr-1" />
-              Draw room
-            </Button>
-            <Button
-              variant={mode === "place_pin" ? "secondary" : "ghost"}
-              size="xs"
-              onClick={() => setMode("place_pin")}
-            >
-              <MapPin className="size-3.5 mr-1" />
-              Place pin
-            </Button>
-          </div>
-          {mode === "draw_room" && (drawingRoomPoints?.length ?? 0) >= 3 && (
-            <Button size="sm" onClick={handleFinishRoom}>
-              Finish room
-            </Button>
-          )}
-          {mode === "draw_room" && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setDrawingRoomPoints(null);
-                setMode("view");
-              }}
-            >
-              Cancel
-            </Button>
-          )}
           <Button
             variant="outline"
             size="icon-sm"
@@ -603,30 +600,179 @@ export function BlueprintWorkspace({
         </div>
       </header>
 
-      <div className="relative flex-1 min-h-0">
-        <BlueprintCanvas
-          ref={canvasContainerRef}
-          transform={transform}
-          onTransformChange={setTransform}
-          rooms={rooms}
-          pins={pins}
-          tasks={tasksWithExtra}
-          selectedRoomId={selectedRoomId}
-          selectedPinId={selectedPinId}
-          mode={mode}
-          blueprintImageUrl={blueprintImageUrl}
-          imageSize={imageSize}
-          drawingPoints={mode === "draw_room" ? drawingRoomPoints : null}
-          onBackgroundClick={handleBackgroundClick}
-          onRoomClick={handleRoomClick}
-          onPinClick={handlePinClick}
-          onCanvasClick={handleCanvasClick}
-        />
-        {mode === "draw_room" && drawingRoomPoints && drawingRoomPoints.length > 0 && (
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded bg-black/70 px-3 py-1.5 text-xs text-white">
-            Click to add points ({drawingRoomPoints.length}). Finish when 3+ points.
+      <div className="flex flex-1 min-h-0">
+        <div className="relative flex-1 min-h-0">
+          <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2">
+            <div className="flex rounded-md border border-[#E8DCC8] bg-white/95 shadow-sm p-0.5">
+              <Button
+                variant={mode === "view" ? "secondary" : "ghost"}
+                size="xs"
+                onClick={() => setMode("view")}
+              >
+                <MousePointer2 className="size-3.5 mr-1" />
+                View
+              </Button>
+              <Button
+                variant={mode === "draw_room" ? "secondary" : "ghost"}
+                size="xs"
+                onClick={() => {
+                  setMode("draw_room");
+                  setDrawingRoomPoints([]);
+                }}
+              >
+                <Square className="size-3.5 mr-1" />
+                Draw room
+              </Button>
+              <Button
+                variant={mode === "place_pin" ? "secondary" : "ghost"}
+                size="xs"
+                onClick={() => setMode("place_pin")}
+              >
+                <MapPin className="size-3.5 mr-1" />
+                Add task
+              </Button>
+            </div>
+            {mode === "draw_room" && (drawingRoomPoints?.length ?? 0) >= 3 && (
+              <Button size="sm" onClick={handleFinishRoom}>
+                Finish room
+              </Button>
+            )}
+            {mode === "draw_room" && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setDrawingRoomPoints(null);
+                  setMode("view");
+                }}
+              >
+                Cancel
+              </Button>
+            )}
           </div>
-        )}
+          <BlueprintCanvas
+            ref={canvasContainerRef}
+            transform={transform}
+            onTransformChange={setTransform}
+            rooms={rooms}
+            pins={pins}
+            tasks={tasksWithExtra}
+            selectedRoomId={selectedRoomId}
+            selectedPinId={selectedPinId}
+            mode={mode}
+            blueprintImageUrl={blueprintImageUrl}
+            imageSize={imageSize}
+            drawingPoints={mode === "draw_room" ? drawingRoomPoints : null}
+            onBackgroundClick={handleBackgroundClick}
+            onRoomClick={handleRoomClick}
+            onPinClick={handlePinClick}
+            onCanvasClick={handleCanvasClick}
+          />
+          {mode === "draw_room" && drawingRoomPoints && drawingRoomPoints.length > 0 && (
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded bg-black/70 px-3 py-1.5 text-xs text-white">
+              Click to add points ({drawingRoomPoints.length}). Finish when 3+ points.
+            </div>
+          )}
+          <div className="absolute bottom-3 right-3 flex items-center gap-0.5 rounded-md border border-[#E8DCC8] bg-white/95 shadow-sm p-0.5">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => handleZoom("out")}
+              disabled={transform.k <= minK}
+              aria-label="Zoom out"
+              className="h-7 w-7"
+            >
+              <ZoomOut className="size-4" />
+            </Button>
+            <span className="min-w-10 text-center text-xs text-[#562F00] tabular-nums">
+              {zoomPercent}%
+            </span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => handleZoom("in")}
+              disabled={transform.k >= maxK}
+              aria-label="Zoom in"
+              className="h-7 w-7"
+            >
+              <ZoomIn className="size-4" />
+            </Button>
+          </div>
+        </div>
+
+        <aside className="w-64 shrink-0 border-l border-[#E8DCC8] bg-white flex flex-col overflow-hidden">
+          <div className="px-3 py-3 border-b border-[#E8DCC8]">
+            <h2 className="text-sm font-semibold text-[#562F00]">Overview</h2>
+          </div>
+          <div className="flex-1 overflow-y-auto px-3 py-3 flex flex-col gap-6">
+            <section>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-medium uppercase tracking-wide text-[#8B7355]">
+                  Rooms ({rooms.length})
+                </span>
+              </div>
+              <ul className="space-y-0.5">
+                {rooms.map((room) => {
+                  const taskCount = pins.filter((p) => p.roomId === room.id).length;
+                  return (
+                    <li key={room.id}>
+                      <button
+                        type="button"
+                        onClick={() => setOverviewRoomId((id) => (id === room.id ? null : room.id))}
+                        className={`w-full text-left flex items-center justify-between gap-2 rounded px-2 py-1.5 text-sm transition-colors ${
+                          overviewRoomId === room.id
+                            ? "bg-[#F5E6D3] text-[#562F00]"
+                            : "text-[#562F00] hover:bg-[#F5E6D3]/60"
+                        }`}
+                      >
+                        <span className="truncate">{room.name}</span>
+                        <span className="flex items-center gap-1 shrink-0">
+                          <span className="text-xs text-[#8B7355] tabular-nums">
+                            {taskCount}
+                          </span>
+                          <ChevronRight
+                            className={`size-3.5 text-[#8B7355] transition-transform ${
+                              overviewRoomId === room.id ? "rotate-90" : ""
+                            }`}
+                          />
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+            <section>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-medium uppercase tracking-wide text-[#8B7355]">
+                  Tasks ({overviewTasks.length})
+                </span>
+              </div>
+              <ul className="space-y-0.5">
+                {overviewTasks.length === 0 ? (
+                  <li className="text-xs text-[#8B7355] px-2 py-1.5">
+                    {overviewRoomId
+                      ? "No tasks in this room."
+                      : "No tasks on blueprint yet. Place a pin to link a task."}
+                  </li>
+                ) : (
+                  overviewTasks.map((task) => (
+                    <li key={task.id}>
+                      <a
+                        href={`/project/${projectId}/task/${task.id}`}
+                        className="block rounded px-2 py-1.5 text-sm text-[#562F00] hover:bg-[#F5E6D3]/60 truncate"
+                      >
+                        {task.title ?? "Untitled"}
+                      </a>
+                    </li>
+                  ))
+                )}
+              </ul>
+            </section>
+          </div>
+        </aside>
       </div>
 
       <RoomModal
@@ -646,6 +792,7 @@ export function BlueprintWorkspace({
         onClose={() => setTaskModal((m) => ({ ...m, open: false }))}
         onLinkTask={handleLinkTask}
         onDeletePin={handleDeletePin}
+        onTaskUpdated={(task) => setTaskUpdates((prev) => ({ ...prev, [task.id]: task }))}
       />
       {placePinModal && (
         <PlacePinModal
@@ -663,6 +810,11 @@ export function BlueprintWorkspace({
         <CreateTaskModal
           projectId={projectId}
           position={createTaskModalPosition}
+          initialLocation={
+            placePinModal
+              ? rooms.find((r) => r.id === getRoomAtPoint(placePinModal.world, rooms))?.name ?? ""
+              : ""
+          }
           onClose={() => setCreateTaskModalOpen(false)}
           onSuccess={handleTaskCreated}
         />

@@ -16,7 +16,9 @@ export function HeaderWithProjectSelector() {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const projectId = searchParams.get("project");
+  const projectIdFromQuery = searchParams.get("project");
+  const projectIdFromPath = pathname.match(/^\/project\/([^/]+)/)?.[1] ?? null;
+  const projectId = projectIdFromQuery ?? projectIdFromPath;
   const [projects, setProjects] = useState<Pick<Project, "id" | "name">[]>([]);
 
   useEffect(() => {
@@ -30,7 +32,19 @@ export function HeaderWithProjectSelector() {
   function setProjectInUrl(id: string) {
     const next = new URLSearchParams(searchParams.toString());
     next.set("project", id);
-    router.push(`${pathname}?${next.toString()}`);
+    const query = next.toString();
+
+    // If we're on a project-scoped path (/project/oldId/...), navigate to the new project's path
+    // so the page refreshes with the new project's data instead of only changing the query.
+    const projectPathMatch = pathname.match(/^\/project\/[^/]+(\/.*)?$/);
+    if (projectPathMatch) {
+      const rest = projectPathMatch[1] ?? "";
+      const newPath = `/project/${id}${rest}`;
+      router.push(query ? `${newPath}?${query}` : newPath);
+      return;
+    }
+
+    router.push(`${pathname}${query ? `?${query}` : ""}`);
   }
 
   return (

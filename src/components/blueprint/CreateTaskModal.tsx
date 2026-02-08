@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { Task } from "@/types/database";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,7 @@ const priorities = ["high", "medium", "low"] as const;
 type Props = {
   projectId: string;
   position: { clientX: number; clientY: number };
+  initialLocation?: string;
   onClose: () => void;
   onSuccess: (task: Task) => void;
 };
@@ -26,13 +27,18 @@ type Props = {
 export function CreateTaskModal({
   projectId,
   position,
+  initialLocation = "",
   onClose,
   onSuccess,
 }: Props) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [location, setLocation] = useState("");
+  const [location, setLocation] = useState(initialLocation);
   const [priority, setPriority] = useState<"high" | "medium" | "low">("medium");
+
+  useEffect(() => {
+    setLocation(initialLocation);
+  }, [initialLocation]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -116,10 +122,10 @@ export function CreateTaskModal({
             value={priority}
             onValueChange={(v) => setPriority(v as "high" | "medium" | "low")}
           >
-            <SelectTrigger id="ct-priority" className="h-8 text-sm">
-              <SelectValue />
+            <SelectTrigger id="ct-priority" className="h-8 text-sm w-full">
+              <SelectValue placeholder="Priority" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="z-100" position="popper">
               {priorities.map((p) => (
                 <SelectItem key={p} value={p}>
                   {p.charAt(0).toUpperCase() + p.slice(1)}

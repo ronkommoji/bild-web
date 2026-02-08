@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useSearchParams } from "next/navigation";
-import { LayoutDashboard, MessageSquare, FileText, LogIn, LogOut, User } from "lucide-react";
+import { LayoutDashboard, MessageSquare, FileText, Map, LogIn, LogOut, User } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -34,13 +34,15 @@ function linkHref(href: string, projectId: string | null) {
 export function AppSidebar() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const projectId = searchParams.get("project");
+  const projectIdFromQuery = searchParams.get("project");
+  const projectIdFromPath = pathname.match(/^\/project\/([^/]+)/)?.[1] ?? null;
+  const projectId = projectIdFromQuery ?? projectIdFromPath;
   const { user, profile, loading, signOut } = useAuth();
 
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="border-b border-sidebar-border flex flex-row items-center justify-between gap-2 px-2 py-2 group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:gap-1">
-        <Link href={linkHref("/", projectId)} className="flex items-center gap-2 min-w-0 group-data-[collapsible=icon]:justify-center">
+        <Link href={linkHref("/", projectIdFromQuery)} className="flex items-center gap-2 min-w-0 group-data-[collapsible=icon]:justify-center">
           <Image
             src="/icon.png"
             alt="Bild"
@@ -57,16 +59,34 @@ export function AppSidebar() {
           <SidebarGroupLabel>Dashboard</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navItems.map((item) => {
-                const isActive =
-                  item.href === "/"
-                    ? pathname === "/"
-                    : pathname.startsWith(item.href);
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={pathname === "/"} tooltip="Home">
+                  <Link href={linkHref("/", projectIdFromQuery)}>
+                    <LayoutDashboard className="size-4" />
+                    <span className="group-data-[collapsible=icon]:hidden">Home</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname.includes("/blueprint")}
+                  tooltip="Blueprint"
+                  className={!projectId ? "pointer-events-none opacity-50" : undefined}
+                >
+                  <Link href={projectId ? `/project/${projectId}/blueprint` : "#"}>
+                    <Map className="size-4" />
+                    <span className="group-data-[collapsible=icon]:hidden">Blueprint</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              {navItems.filter((item) => item.href !== "/").map((item) => {
+                const isActive = pathname.startsWith(item.href);
                 const Icon = item.icon;
                 return (
                   <SidebarMenuItem key={item.href}>
                     <SidebarMenuButton asChild isActive={isActive} tooltip={item.label}>
-                      <Link href={linkHref(item.href, projectId)}>
+                      <Link href={linkHref(item.href, projectIdFromQuery)}>
                         <Icon className="size-4" />
                         <span className="group-data-[collapsible=icon]:hidden">{item.label}</span>
                       </Link>

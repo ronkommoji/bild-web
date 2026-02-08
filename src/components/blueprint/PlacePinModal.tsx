@@ -64,7 +64,7 @@ export function PlacePinModal({
       style={{ left: x, top: y, width: modalWidth }}
     >
       <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-[#562F00]">Place task pin</span>
+        <span className="text-sm font-medium text-[#562F00]">Add task</span>
         <Button type="button" variant="ghost" size="icon-xs" onClick={onClose}>
           ×
         </Button>
@@ -106,7 +106,7 @@ export function PlacePinModal({
           disabled={!selectedTaskId}
           onClick={() => selectedTaskId && onPlace(selectedTaskId)}
         >
-          Place pin
+          Add task
         </Button>
         {onOpenNewTaskModal && (
           <Button type="button" size="sm" variant="secondary" onClick={onOpenNewTaskModal}>

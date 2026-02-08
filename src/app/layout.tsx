@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { FilePreviewProvider } from "@/components/file-preview";
+import { AuthProvider } from "@/components/auth-provider";
 import { AuthLayout } from "@/components/auth-layout";
 import "./globals.css";
 
@@ -31,7 +32,9 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen bg-background text-foreground`}
       >
         <FilePreviewProvider>
-          <AuthLayout>{children}</AuthLayout>
+          <AuthProvider>
+            <AuthLayout>{children}</AuthLayout>
+          </AuthProvider>
         </FilePreviewProvider>
       </body>
     </html>

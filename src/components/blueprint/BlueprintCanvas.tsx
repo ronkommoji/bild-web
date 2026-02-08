@@ -227,7 +227,7 @@ export const BlueprintCanvas = forwardRef<HTMLDivElement, Props>(function Bluepr
               fill="#666"
               fontSize={14}
             >
-              No blueprint image. Add URL in toolbar.
+              No blueprint image. Upload a blueprint using the button above.
             </text>
           )}
 

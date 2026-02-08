@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import type { Project, Task } from "@/types/database";
 import { DashboardCharts } from "./dashboard-charts";
+import { WalkthroughChecklist } from "@/components/walkthrough-checklist";
 
 async function getProject(id: string): Promise<Project | null> {
   const { data } = await supabase.from("projects").select("*").eq("id", id).single();
@@ -121,6 +122,7 @@ export default async function HomePage({
       </div>
 
       <main className="mx-auto max-w-6xl px-6 py-8">
+        <WalkthroughChecklist projectId={projectId} />
         {/* Top 3 KPI cards */}
         <div className="mb-8 grid gap-4 sm:grid-cols-3">
           <div className="rounded-xl border border-[#E8DCC8] bg-white p-5">

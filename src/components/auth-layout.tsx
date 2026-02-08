@@ -11,27 +11,42 @@ import { Loader2 } from "lucide-react";
 export function AuthLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, loading } = useAuth();
+  const { user, profile, loading } = useAuth();
   const isLoginPage = pathname === "/login";
+  const isSignupPage = pathname === "/signup";
+  const isOnboardingPage = pathname === "/onboarding";
+  const isJoinPage = pathname === "/join";
+  const isBobPage = pathname?.startsWith("/bob") ?? false;
+  const needsOnboarding = user && profile && profile.onboarding_completed_at == null;
 
   useEffect(() => {
     if (loading) return;
     if (isLoginPage && user) {
-      router.replace("/");
+      if (needsOnboarding) router.replace("/onboarding");
+      else router.replace("/");
       return;
     }
-    if (!isLoginPage && !user) {
+    if (isSignupPage && user) {
+      router.replace("/onboarding");
+      return;
+    }
+    if (needsOnboarding && !isOnboardingPage) {
+      router.replace("/onboarding");
+      return;
+    }
+    // Don't redirect to login when on Bob or Join — they show their own sign-in prompt
+    if (!isLoginPage && !isSignupPage && !isOnboardingPage && !isJoinPage && !user && !isBobPage) {
       router.replace("/login");
     }
-  }, [loading, user, isLoginPage, router]);
+  }, [loading, user, profile, needsOnboarding, isLoginPage, isSignupPage, isOnboardingPage, isJoinPage, isBobPage, router]);
 
-  // Login page: no sidebar, just the page content (full width)
-  if (isLoginPage) {
+  // Login, signup, onboarding, join: no sidebar, just the page content (full width)
+  if (isLoginPage || isSignupPage || isOnboardingPage || isJoinPage) {
     return <div className="min-h-screen flex flex-col">{children}</div>;
   }
 
-  // Not logged in and not on login: show loading until redirect
-  if (!user) {
+  // Not logged in and not on login/signup/onboarding/join (and not on Bob): show loading until redirect
+  if (!user && !isBobPage && !isJoinPage) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <Loader2 className="size-8 animate-spin text-muted-foreground" />

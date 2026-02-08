@@ -234,9 +234,12 @@ export default function BobPage() {
     );
   }
 
+  // One beige for the whole Bob block (header + chat + input) so it’s distinct from the main background
+  const bobBeige = "bg-[#F5F0E6]";
+
   return (
-    <div className="flex h-full min-h-[70vh] flex-col">
-      <div className="border-b border-[#E8DCC8] bg-[#F5F0E6] px-4 py-3">
+    <div className={`flex h-full min-h-[70vh] flex-col ${bobBeige}`}>
+      <div className="border-b border-[#E8DCC8] px-4 py-3">
         <div className="mx-auto flex max-w-3xl items-center justify-between">
           <div>
             <h1 className="text-lg font-bold text-[#562F00]">Bob</h1>
@@ -383,7 +386,7 @@ export default function BobPage() {
         </div>
       </div>
 
-      <div className="border-t border-[#E8DCC8] bg-white p-4">
+      <div className="border-t border-[#E8DCC8] bg-[#F5F0E6] p-4">
         {chatError && (
           <p className="mb-2 text-sm text-destructive" role="alert">
             {chatError}
@@ -400,7 +403,7 @@ export default function BobPage() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Ask Bob about your project files…"
-            className="flex-1 border-[#E8DCC8] bg-[#FFFDF1]"
+            className="flex-1 border-[#E8DCC8] bg-white placeholder:text-[#A08050]"
             disabled={sending}
           />
           <Button type="submit" disabled={sending || !input.trim()}>

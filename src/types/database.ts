@@ -52,9 +52,11 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null;
+          company_name: string | null;
           created_at: string | null;
           full_name: string;
           id: string;
+          onboarding_completed_at: string | null;
           role: string | null;
           trade: string | null;
         };

@@ -1,18 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import type { Project, ProjectFile } from "@/types/database";
+import type { ProjectFile } from "@/types/database";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -25,19 +18,20 @@ import { Upload, FileText, Trash2, Loader2 } from "lucide-react";
 
 const BUCKET = "project-files";
 
-export function FilesView({ projects }: { projects: Pick<Project, "id" | "name">[] }) {
+function safeStoragePath(projectId: string, fileName: string): string {
+  const ext = (fileName.split(".").pop() || "").toLowerCase().replace(/[^a-z0-9]/g, "") || "bin";
+  return `${projectId}/${crypto.randomUUID()}.${ext}`;
+}
+
+export function FilesView({ projectId, projectName }: { projectId: string; projectName: string }) {
   const router = useRouter();
-  const [projectId, setProjectId] = useState<string>("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [files, setFiles] = useState<ProjectFile[]>([]);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!projectId) {
-      setFiles([]);
-      return;
-    }
     setLoading(true);
     supabase
       .from("project_files")
@@ -56,49 +50,50 @@ export function FilesView({ projects }: { projects: Pick<Project, "id" | "name">
   }, [projectId]);
 
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file || !projectId) return;
+    const selectedFiles = e.target.files;
+    if (!selectedFiles?.length || !projectId) {
+      e.target.value = "";
+      return;
+    }
     setUploading(true);
     setError(null);
-    const ext = file.name.split(".").pop() ?? "";
-    const path = `${projectId}/${crypto.randomUUID()}-${file.name}`;
-    const { error: uploadErr } = await supabase.storage
-      .from(BUCKET)
-      .upload(path, file, { contentType: file.type, upsert: false });
-    if (uploadErr) {
-      setError(uploadErr.message);
+    const added: ProjectFile[] = [];
+    try {
+      for (let i = 0; i < selectedFiles.length; i++) {
+        const file = selectedFiles[i];
+        const path = safeStoragePath(projectId, file.name);
+        const { error: uploadErr } = await supabase.storage
+          .from(BUCKET)
+          .upload(path, file, { contentType: file.type || "application/octet-stream", upsert: false });
+        if (uploadErr) {
+          setError(uploadErr.message);
+          break;
+        }
+        const { data: row, error: insertErr } = await supabase
+          .from("project_files")
+          .insert({
+            project_id: projectId,
+            name: file.name,
+            file_path: path,
+            file_size: file.size,
+            content_type: file.type || null,
+          })
+          .select("*")
+          .single();
+        if (insertErr) {
+          setError(insertErr.message);
+          break;
+        }
+        added.push(row as ProjectFile);
+      }
+      if (added.length > 0) {
+        setFiles((prev) => [...added, ...prev]);
+        router.refresh();
+      }
+    } finally {
       setUploading(false);
-      return;
+      e.target.value = "";
     }
-    const { data: publicUrl } = supabase.storage.from(BUCKET).getPublicUrl(path);
-    const { error: insertErr } = await supabase.from("project_files").insert({
-      project_id: projectId,
-      name: file.name,
-      file_path: path,
-      file_size: file.size,
-      content_type: file.type || null,
-    });
-    if (insertErr) {
-      setError(insertErr.message);
-      setUploading(false);
-      return;
-    }
-    router.refresh();
-    setFiles((prev) => [
-      {
-        id: "",
-        project_id: projectId,
-        name: file.name,
-        file_path: path,
-        file_size: file.size,
-        content_type: file.type || null,
-        uploaded_by: null,
-        created_at: new Date().toISOString(),
-      },
-      ...prev,
-    ]);
-    setUploading(false);
-    e.target.value = "";
   }
 
   async function handleDelete(file: ProjectFile) {
@@ -116,125 +111,98 @@ export function FilesView({ projects }: { projects: Pick<Project, "id" | "name">
     return data?.signedUrl ?? "#";
   }
 
-  if (projects.length === 0) {
-    return (
-      <Card>
-        <CardContent className="py-12 text-center text-muted-foreground">
-        No projects yet. Create a project first to upload files.
-        </CardContent>
-      </Card>
-    );
-  }
-
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader>
-          <CardTitle>Select project</CardTitle>
-          <Select
-            value={projectId}
-            onValueChange={setProjectId}
-          >
-            <SelectTrigger className="w-[280px]">
-              <SelectValue placeholder="Choose a project" />
-            </SelectTrigger>
-            <SelectContent>
-              {projects.map((p) => (
-                <SelectItem key={p.id} value={p.id}>
-                  {p.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>Files — {projectName}</CardTitle>
+          <div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              className="hidden"
+              multiple
+              onChange={handleUpload}
+              disabled={uploading}
+              aria-label="Upload files"
+            />
+            <Button
+              type="button"
+              disabled={uploading}
+              className="flex items-center gap-2"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              {uploading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Upload className="h-4 w-4" />
+              )}
+              {uploading ? "Uploading…" : "Upload file(s)"}
+            </Button>
+          </div>
         </CardHeader>
-      </Card>
-
-      {projectId && (
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Files</CardTitle>
-            <label className="cursor-pointer">
-              <input
-                type="file"
-                className="hidden"
-                onChange={handleUpload}
-                disabled={uploading}
-              />
-              <Button type="button" disabled={uploading} className="flex items-center gap-2">
-                  {uploading ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Upload className="h-4 w-4" />
-                  )}
-                  Upload file
-                </Button>
-            </label>
-          </CardHeader>
-          <CardContent>
-            {error && (
-              <p className="mb-4 text-sm text-destructive">{error}</p>
-            )}
-            {loading ? (
-              <p className="py-8 text-center text-muted-foreground">Loading…</p>
-            ) : files.length === 0 ? (
-              <p className="py-8 text-center text-muted-foreground">
-                No files yet. Upload a document.
-              </p>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Size</TableHead>
-                    <TableHead>Uploaded</TableHead>
-                    <TableHead className="w-[100px]">Actions</TableHead>
+        <CardContent>
+          {error && <p className="mb-4 text-sm text-destructive">{error}</p>}
+          {loading ? (
+            <p className="py-8 text-center text-muted-foreground">Loading…</p>
+          ) : files.length === 0 ? (
+            <p className="py-8 text-center text-muted-foreground">
+              No files yet. Upload a document.
+            </p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Size</TableHead>
+                  <TableHead>Uploaded</TableHead>
+                  <TableHead className="w-[100px]">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {files.map((file) => (
+                  <TableRow key={file.id}>
+                    <TableCell className="font-medium">
+                      <a
+                        href="#"
+                        className="flex items-center gap-2 text-primary hover:underline"
+                        onClick={async (e) => {
+                          e.preventDefault();
+                          const url = await getDownloadUrl(file);
+                          window.open(url, "_blank");
+                        }}
+                      >
+                        <FileText className="h-4 w-4" />
+                        {file.name}
+                      </a>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {file.file_size != null
+                        ? `${(file.file_size / 1024).toFixed(1)} KB`
+                        : "—"}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {file.created_at
+                        ? new Date(file.created_at).toLocaleString()
+                        : "—"}
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => handleDelete(file)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {files.map((file) => (
-                    <TableRow key={file.id}>
-                      <TableCell className="font-medium">
-                        <a
-                          href="#"
-                          className="flex items-center gap-2 text-primary hover:underline"
-                          onClick={async (e) => {
-                            e.preventDefault();
-                            const url = await getDownloadUrl(file);
-                            window.open(url, "_blank");
-                          }}
-                        >
-                          <FileText className="h-4 w-4" />
-                          {file.name}
-                        </a>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {file.file_size != null
-                          ? `${(file.file_size / 1024).toFixed(1)} KB`
-                          : "—"}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {file.created_at
-                          ? new Date(file.created_at).toLocaleString()
-                          : "—"}
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-destructive hover:text-destructive"
-                          onClick={() => handleDelete(file)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
-      )}
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

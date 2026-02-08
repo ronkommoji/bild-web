@@ -47,10 +47,10 @@ export default async function TaskDetailPage({
         <div className="mx-auto flex max-w-4xl items-center justify-between">
           <div className="flex items-center gap-4">
             <Link
-              href={`/project/${projectId}`}
+              href={`/?project=${projectId}`}
               className="text-[#562F00] hover:text-[#FF9644]"
             >
-              ← Project
+              ← Home
             </Link>
             <h1 className="text-lg font-bold text-[#562F00]">Task details</h1>
           </div>

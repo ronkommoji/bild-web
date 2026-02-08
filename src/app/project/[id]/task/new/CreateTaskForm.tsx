@@ -157,7 +157,7 @@ export function CreateTaskForm({ projectId }: Props) {
               {loading ? "Creating…" : "Create task"}
             </Button>
             <Button type="button" variant="outline" asChild>
-              <a href={`/project/${projectId}`}>Cancel</a>
+              <a href={`/?project=${projectId}`}>Cancel</a>
             </Button>
           </div>
         </form>

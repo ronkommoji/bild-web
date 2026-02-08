@@ -26,7 +26,7 @@ export function CreateProjectForm() {
       setError(err.message);
       return;
     }
-    if (data?.id) router.push(`/project/${data.id}`);
+    if (data?.id) router.push(`/?project=${data.id}`);
   }
 
   return (

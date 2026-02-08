@@ -70,8 +70,8 @@ export default async function ReportsPage({
       <header className="border-b border-[#E8DCC8] bg-[#FFFDF1] px-6 py-4">
         <div className="mx-auto flex max-w-4xl items-center justify-between">
           <div className="flex items-center gap-4">
-            <Link href={`/project/${id}`} className="text-[#562F00] hover:text-[#FF9644]">
-              ← {project.name}
+            <Link href={`/?project=${id}`} className="text-[#562F00] hover:text-[#FF9644]">
+              ← Home
             </Link>
             <h1 className="text-xl font-bold text-[#562F00]">Reports</h1>
           </div>

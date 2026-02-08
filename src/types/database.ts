@@ -71,6 +71,58 @@ export type Database = {
           created_at: string | null;
         };
       };
+      project_blueprint_rooms: {
+        Row: {
+          id: string;
+          project_id: string;
+          name: string;
+          points: Json;
+          created_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          project_id: string;
+          name: string;
+          points: Json;
+          created_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          project_id?: string;
+          name?: string;
+          points?: Json;
+          created_at?: string | null;
+        };
+      };
+      project_blueprint_pins: {
+        Row: {
+          id: string;
+          project_id: string;
+          task_id: string;
+          room_id: string | null;
+          x: number;
+          y: number;
+          created_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          project_id: string;
+          task_id: string;
+          room_id?: string | null;
+          x: number;
+          y: number;
+          created_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          project_id?: string;
+          task_id?: string;
+          room_id?: string | null;
+          x?: number;
+          y?: number;
+          created_at?: string | null;
+        };
+      };
       project_members: {
         Row: {
           id: string;
@@ -83,6 +135,7 @@ export type Database = {
       projects: {
         Row: {
           address: string | null;
+          blueprint_file_id: string | null;
           created_at: string | null;
           created_by: string | null;
           description: string | null;
@@ -92,6 +145,7 @@ export type Database = {
         };
         Insert: {
           address?: string | null;
+          blueprint_file_id?: string | null;
           created_at?: string | null;
           created_by?: string | null;
           description?: string | null;
@@ -101,6 +155,7 @@ export type Database = {
         };
         Update: {
           address?: string | null;
+          blueprint_file_id?: string | null;
           created_at?: string | null;
           created_by?: string | null;
           description?: string | null;
@@ -174,6 +229,8 @@ export type Database = {
 
 export type Project = Database["public"]["Tables"]["projects"]["Row"];
 export type ProjectFile = Database["public"]["Tables"]["project_files"]["Row"];
+export type ProjectBlueprintRoom = Database["public"]["Tables"]["project_blueprint_rooms"]["Row"];
+export type ProjectBlueprintPin = Database["public"]["Tables"]["project_blueprint_pins"]["Row"];
 export type Task = Database["public"]["Tables"]["tasks"]["Row"];
 export type TaskProof = Database["public"]["Tables"]["task_proofs"]["Row"];
 export type ActivityFeedItem = Database["public"]["Tables"]["activity_feed"]["Row"];

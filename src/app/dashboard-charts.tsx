@@ -145,7 +145,7 @@ export function DashboardCharts({
             </p>
           ) : (
             <ChartContainer
-              config={{ completed: { label: "Completed", color: "hsl(var(--chart-2))" } }}
+              config={{ completed: { label: "Completed", color: "var(--primary)" } }}
               className="h-[240px] w-full"
             >
               <BarChart data={barData} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
@@ -163,7 +163,7 @@ export function DashboardCharts({
                 />
                 <Bar
                   dataKey="completed"
-                  fill="hsl(var(--chart-2))"
+                  fill="var(--primary)"
                   name="Completed"
                   radius={[4, 4, 0, 0]}
                 />

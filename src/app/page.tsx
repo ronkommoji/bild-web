@@ -139,7 +139,7 @@ export default async function HomePage({
           </div>
           <div className="rounded-xl border border-[#E8DCC8] bg-white p-5">
             <p className="text-sm font-medium text-[#A08050]">Blockers</p>
-            <p className="mt-1 text-2xl font-bold text-[#E53935]">{blocked.length}</p>
+            <p className="mt-1 text-2xl font-bold text-[#562F00]">{blocked.length}</p>
           </div>
         </div>
 
